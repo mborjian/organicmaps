@@ -1,10 +1,14 @@
 package app.organicmaps.settings;
 
 import android.annotation.SuppressLint;
+import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
 import android.os.Bundle;
+import android.view.LayoutInflater;
 import android.view.View;
+import android.widget.SeekBar;
+import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.preference.ListPreference;
@@ -31,6 +35,8 @@ import app.organicmaps.sdk.util.NetworkPolicy;
 import app.organicmaps.sdk.util.PowerManagment;
 import app.organicmaps.sdk.util.SharedPropertiesUtils;
 import app.organicmaps.sdk.util.log.LogsManager;
+import app.organicmaps.util.ScreenAdjustments;
+import app.organicmaps.util.ScreenAdjustments.Edge;
 import app.organicmaps.util.ThemeSwitcher;
 import app.organicmaps.util.Utils;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
@@ -72,6 +78,8 @@ public class SettingsPrefsFragment extends BaseXmlSettingsFragment implements La
     initScreenSleepEnabledPrefsCallbacks();
     initShowOnLockScreenPrefsCallbacks();
     initNightNavigationPrefsCallbacks();
+    initAdaptToScreenPrefsCallbacks();
+    initScreenMarginsPrefsCallbacks();
   }
 
   private void updateVoiceInstructionsPrefsSummary()
@@ -114,6 +122,7 @@ public class SettingsPrefsFragment extends BaseXmlSettingsFragment implements La
     updateVoiceInstructionsPrefsSummary();
     updateRoutingSettingsPrefsSummary();
     updateMapLanguageCodeSummary();
+    updateScreenMarginsSummary();
   }
 
   @Override
@@ -544,6 +553,140 @@ public class SettingsPrefsFragment extends BaseXmlSettingsFragment implements La
       }
       return isChanged;
     });
+  }
+
+  private void initAdaptToScreenPrefsCallbacks()
+  {
+    final TwoStatePreference pref = getPreference(getString(R.string.pref_adapt_to_screen));
+
+    pref.setChecked(ScreenAdjustments.isAdaptToScreen(requireContext()));
+    pref.setSummary(adaptToScreenSummary());
+    pref.setOnPreferenceChangeListener((preference, newValue) -> {
+      ScreenAdjustments.setAdaptToScreen(requireContext(), (Boolean) newValue);
+      // A density is applied before the first view is inflated, so this screen has to be built
+      // again for its own result to show - which is also the point: the answer to the switch is
+      // the screen it is on, not a sentence about it. Posted so the value above is written first;
+      // the screens behind this one pick the new scale up when they are resumed.
+      requireView().post(() -> {
+        if (isAdded())
+          getSettingsActivity().recreate();
+      });
+      return true;
+    });
+  }
+
+  /**
+   * The description with what the switch is drawing at in one number: "... x1.5", and "x1" while
+   * it is off, so an empty cell is never what the row shows. This is the note the app-hub settings
+   * row carries beside its switch - here it ends the summary instead, because a preference row has
+   * no value column of its own.
+   */
+  @NonNull
+  private CharSequence adaptToScreenSummary()
+  {
+    final float scale = ScreenAdjustments.getScreenScale(requireContext());
+    final String number = scale == (int) scale
+                          ? String.valueOf((int) scale)
+                          : String.format(Locale.US, "%.1f", scale);
+    return getString(R.string.adapt_to_screen_summary) + " · "
+           + getString(R.string.adapt_to_screen_scale, number);
+  }
+
+  private void initScreenMarginsPrefsCallbacks()
+  {
+    final Preference pref = getPreference(getString(R.string.pref_screen_margins));
+    pref.setOnPreferenceClickListener(preference -> {
+      showMarginEdgePicker();
+      return true;
+    });
+    updateScreenMarginsSummary();
+  }
+
+  /** "0 / 0 / 0 / 0 dp" - left / right / top / bottom, the order of the edges. */
+  private void updateScreenMarginsSummary()
+  {
+    final Context context = requireContext();
+    getPreference(getString(R.string.pref_screen_margins))
+        .setSummary(getString(R.string.screen_margins_value,
+                              ScreenAdjustments.getMarginDp(context, Edge.LEFT),
+                              ScreenAdjustments.getMarginDp(context, Edge.RIGHT),
+                              ScreenAdjustments.getMarginDp(context, Edge.TOP),
+                              ScreenAdjustments.getMarginDp(context, Edge.BOTTOM)));
+  }
+
+  /** One row per edge, each showing the value it currently has. */
+  private void showMarginEdgePicker()
+  {
+    final Edge[] edges = Edge.values();
+    final Context context = requireContext();
+    final String[] items = new String[edges.length];
+    for (int i = 0; i < edges.length; i++)
+      items[i] =
+          getString(R.string.screen_margin_edge_value, getString(edges[i].title),
+                    ScreenAdjustments.getMarginDp(context, edges[i]));
+
+    new MaterialAlertDialogBuilder(requireActivity(), R.style.MwmTheme_AlertDialog)
+        .setTitle(R.string.screen_margins_title)
+        .setMessage(R.string.screen_margins_message)
+        .setItems(items, (dialog, which) -> showMarginDialer(edges[which]))
+        .setNegativeButton(android.R.string.cancel, null)
+        .show();
+  }
+
+  /**
+   * The dial for one edge: every whole dp from 0 up to half of that side of the screen. The value
+   * is applied as the bar moves and this screen is padded by the same margins as everything else,
+   * so turning it moves the screen immediately - the dial stays open while it does, which is what
+   * makes it a preview.
+   */
+  private void showMarginDialer(@NonNull Edge edge)
+  {
+    final Context context = requireContext();
+    final View content = LayoutInflater.from(context).inflate(R.layout.dialog_margin_dialer, null, false);
+    final TextView value = content.findViewById(R.id.margin_value);
+    final SeekBar seek = content.findViewById(R.id.margin_seek);
+    final TextView range = content.findViewById(R.id.margin_range);
+
+    final int max = ScreenAdjustments.getMaxMarginDp(context, edge);
+    final int original = ScreenAdjustments.getMarginDp(context, edge);
+
+    value.setText(getString(R.string.screen_margin_value, original));
+    range.setText(getString(R.string.screen_margin_range, max));
+    seek.setMax(max);
+    seek.setProgress(original);
+    seek.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+      @Override
+      public void onProgressChanged(SeekBar bar, int progress, boolean fromUser)
+      {
+        value.setText(getString(R.string.screen_margin_value, progress));
+        if (fromUser)
+          applyScreenMargin(edge, progress);
+      }
+
+      @Override
+      public void onStartTrackingTouch(SeekBar bar) {}
+
+      @Override
+      public void onStopTrackingTouch(SeekBar bar) {}
+    });
+
+    new MaterialAlertDialogBuilder(requireActivity(), R.style.MwmTheme_AlertDialog)
+        .setTitle(edge.title)
+        .setView(content)
+        .setPositiveButton(android.R.string.ok, null)
+        // Cancelling puts the edge back where it was: the bar has been applied as it moved, so
+        // leaving alone is not a way to undo.
+        .setNegativeButton(android.R.string.cancel,
+                           (dialog, which) -> applyScreenMargin(edge, original))
+        .show();
+  }
+
+  /** Writes the value and shows the result at once: this screen moves with it, like every other. */
+  private void applyScreenMargin(@NonNull Edge edge, int dp)
+  {
+    ScreenAdjustments.setMarginDp(requireContext(), edge, dp);
+    getSettingsActivity().applyScreenMargins();
+    updateScreenMarginsSummary();
   }
 
   private void initBookmarksTextPlacementPrefsCallbacks()

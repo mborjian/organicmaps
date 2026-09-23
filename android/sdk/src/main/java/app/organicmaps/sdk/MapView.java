@@ -29,7 +29,7 @@ public class MapView extends SurfaceView
     {
       Logger.d(TAG);
       mMap.onSurfaceCreated(MapView.this.getContext(), holder.getSurface(), holder.getSurfaceFrame(),
-                            ConfigurationHelper.getDensityDpi(MapView.this.getResources()));
+                            deviceDensityDpi());
     }
 
     @Override
@@ -46,6 +46,22 @@ public class MapView extends SurfaceView
       Logger.d(TAG);
       mMap.onSurfaceDestroyed(isHostActivityChangingConfigurations());
     }
+  }
+
+  /**
+   * The density the map is rendered at: the <i>device's</i> one, never a rescaled one.
+   * <p>
+   * The app can move its own UI into a denser dp space (the <i>Adapt to screen</i> setting), which
+   * changes the configuration this view happens to be inflated with - but the map is not part of
+   * that UI. Its labels, markers and route lines have to keep the size they have on this screen:
+   * they must not grow when the buttons around them grow, nor shrink when they are scaled down.
+   */
+  private int deviceDensityDpi()
+  {
+    final int densityDpi =
+        ConfigurationHelper.getDensityDpi(getContext().getApplicationContext().getResources());
+    // Fall back to this view's own resources if the device reports no density at all.
+    return densityDpi > 0 ? densityDpi : ConfigurationHelper.getDensityDpi(MapView.this.getResources());
   }
 
   @NonNull

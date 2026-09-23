@@ -69,6 +69,20 @@
       android:summary="@string/maps_storage_summary"
       android:order="8" />
     <SwitchPreferenceCompat
+      android:key="@string/pref_adapt_to_screen"
+      android:title="@string/adapt_to_screen_title"
+      app:singleLineTitle="false"
+      android:summary="@string/adapt_to_screen_summary"
+      android:persistent="false"
+      android:defaultValue="false"
+      android:order="9" />
+    <Preference
+      android:key="@string/pref_screen_margins"
+      android:title="@string/screen_margins_title"
+      app:singleLineTitle="false"
+      android:persistent="false"
+      android:order="10" />
+    <SwitchPreferenceCompat
       android:key="@string/pref_enable_logging"
       android:title="@string/enable_logging"
       app:singleLineTitle="false"

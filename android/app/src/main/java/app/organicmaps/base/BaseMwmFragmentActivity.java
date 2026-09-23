@@ -1,7 +1,9 @@
 package app.organicmaps.base;
 
 import android.content.ComponentName;
+import android.content.Context;
 import android.content.Intent;
+import android.content.res.Configuration;
 import android.graphics.Color;
 import android.media.AudioManager;
 import android.os.Bundle;
@@ -20,6 +22,7 @@ import app.organicmaps.MwmApplication;
 import app.organicmaps.R;
 import app.organicmaps.SplashActivity;
 import app.organicmaps.sdk.util.log.Logger;
+import app.organicmaps.util.ScreenAdjustments;
 import java.util.Objects;
 
 public abstract class BaseMwmFragmentActivity extends AppCompatActivity
@@ -27,6 +30,69 @@ public abstract class BaseMwmFragmentActivity extends AppCompatActivity
   private static final String TAG = BaseMwmFragmentActivity.class.getSimpleName();
 
   private boolean mSafeCreated;
+
+  /**
+   * The scale this screen was built at, see {@link ScreenAdjustments#getScreenScale(Context)}.
+   * <p>
+   * A density cannot be changed on a screen that already exists, so it is remembered here to
+   * notice when it is no longer the one the settings ask for - see {@link #onResume}.
+   */
+  private float mAppliedScale = 1f;
+
+  @Override
+  protected void attachBaseContext(@NonNull Context newBase)
+  {
+    // Before super so the very first window is already in the dp space the settings describe.
+    mAppliedScale = ScreenAdjustments.getScreenScale(newBase);
+    super.attachBaseContext(ScreenAdjustments.wrapContext(newBase));
+  }
+
+  @Override
+  protected void onResume()
+  {
+    super.onResume();
+
+    // The screen margins can be changed from the settings screen while this one sits behind it,
+    // so they are re-read on the way back. Applying them is idempotent: a screen that has not
+    // moved is simply padded with the same values again.
+    applyScreenMargins();
+
+    // Every screen is built in the dp space the settings described when it was created, so one
+    // that is already up has to be built again when the *Adapt to screen* switch is flipped
+    // somewhere else. That is the ordinary case, not an edge one: the map is sitting behind the
+    // settings screen while the switch is turned on.
+    if (!isFinishing() && mAppliedScale != ScreenAdjustments.getScreenScale(this))
+      recreate();
+  }
+
+  /**
+   * A screen that handles its own configuration changes - rotation, a new display density - keeps
+   * the dp space it was built in, so the scale is checked once more here: one that no longer
+   * matches the settings is rebuilt instead of being left drawn at the old size.
+   */
+  @Override
+  public void onConfigurationChanged(@NonNull Configuration newConfig)
+  {
+    super.onConfigurationChanged(newConfig);
+    applyScreenMargins();
+    if (!isFinishing() && mAppliedScale != ScreenAdjustments.getScreenScale(this))
+      recreate();
+  }
+
+  /**
+   * Moves this activity's content away from the screen edges by the configured margins.
+   * <p>
+   * Called on every resume, and again by the settings screen while a margin is being dialled -
+   * which is why the result of a change is visible there while it is being made: the whole screen
+   * (header included) moves, exactly as the overlays of the map will.
+   * <p>
+   * The map activity overrides this to hold only what it draws <i>on top of</i> the map clear of
+   * the edges; the map itself keeps the whole screen.
+   */
+  public void applyScreenMargins()
+  {
+    ScreenAdjustments.applyToContent(this);
+  }
 
   /**
    * Shows splash screen and initializes the core in case when it was not initialized.

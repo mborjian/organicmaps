@@ -28,6 +28,7 @@ import android.text.method.LinkMovementMethod;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.Window;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -113,6 +114,7 @@ import app.organicmaps.search.SearchFragmentController;
 import app.organicmaps.search.SearchPageViewModel;
 import app.organicmaps.search.SearchRequest;
 import app.organicmaps.settings.SettingsActivity;
+import app.organicmaps.util.ScreenAdjustments;
 import app.organicmaps.util.SharingUtils;
 import app.organicmaps.util.ThemeSwitcher;
 import app.organicmaps.util.ThemeUtils;
@@ -573,6 +575,45 @@ public class MwmActivity extends BaseMwmFragmentActivity
   {
     UiUtils.setLightStatusBar(this, !(ThemeUtils.isDarkTheme(this) || RoutingController.get().isPlanning()
                                       || ChoosePositionMode.get() != ChoosePositionMode.None));
+  }
+
+  /**
+   * Holds only what is drawn <i>on top of</i> the map clear of the screen edges: the buttons, the
+   * panels, the toolbars and the position chooser move inwards by the configured screen margins,
+   * while the map view keeps the whole screen - a launcher overlay must not cover the controls,
+   * but it is not a reason to shrink or shift the map itself.
+   * <p>
+   * The overlays are inset with layout margins rather than padding: several of them already own a
+   * window-insets listener that writes their padding on every dispatch, which would silently drop
+   * a padding applied from here.
+   */
+  @Override
+  public void applyScreenMargins()
+  {
+    final ViewGroup coordinator = findViewById(R.id.coordinator);
+    if (coordinator == null)
+      return;
+
+    for (int i = 0; i < coordinator.getChildCount(); i++)
+    {
+      final View child = coordinator.getChildAt(i);
+      if (child.getId() == R.id.map_container)
+        applyScreenMarginsToMapOverlays((ViewGroup) child);
+      else
+        ScreenAdjustments.insetByScreenMargins(child, this);
+    }
+  }
+
+  /** The overlays of the map container: everything it holds but the map view itself. */
+  private void applyScreenMarginsToMapOverlays(@NonNull ViewGroup mapContainer)
+  {
+    for (int i = 0; i < mapContainer.getChildCount(); i++)
+    {
+      final View child = mapContainer.getChildAt(i);
+      if (child.getId() == R.id.map)
+        continue;
+      ScreenAdjustments.insetByScreenMargins(child, this);
+    }
   }
 
   private void updateViewsInsets()

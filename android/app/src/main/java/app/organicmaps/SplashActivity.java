@@ -4,6 +4,7 @@ import static android.Manifest.permission.ACCESS_COARSE_LOCATION;
 import static android.Manifest.permission.ACCESS_FINE_LOCATION;
 
 import android.content.ComponentName;
+import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
 import android.os.Bundle;
@@ -28,6 +29,7 @@ import app.organicmaps.sdk.location.LocationUtils;
 import app.organicmaps.sdk.util.Config;
 import app.organicmaps.sdk.util.concurrency.UiThread;
 import app.organicmaps.sdk.util.log.Logger;
+import app.organicmaps.util.ScreenAdjustments;
 import app.organicmaps.util.SharingUtils;
 import app.organicmaps.util.Utils;
 import app.organicmaps.util.WindowInsetUtils.BaselinePaddingInsetsListener;
@@ -56,11 +58,20 @@ public class SplashActivity extends AppCompatActivity
   private final Runnable mInitCoreDelayedTask = this::init;
 
   @Override
+  protected void attachBaseContext(@NonNull Context newBase)
+  {
+    // The splash is the first screen the user sees, so it has to be in the same dp space as the
+    // ones that follow it - see the *Adapt to screen* setting.
+    super.attachBaseContext(ScreenAdjustments.wrapContext(newBase));
+  }
+
+  @Override
   protected void onCreate(@Nullable Bundle savedInstanceState)
   {
     super.onCreate(savedInstanceState);
     UiThread.cancelDelayedTasks(mInitCoreDelayedTask);
     setContentView(R.layout.activity_splash);
+    ScreenAdjustments.applyToContent(this);
     adjustBrandingInfoPadding();
 
     // https://github.com/organicmaps/organicmaps/issues/11938
@@ -88,6 +99,8 @@ public class SplashActivity extends AppCompatActivity
   protected void onResume()
   {
     super.onResume();
+    // The margins may have been dialled in from the settings screen while this one was behind it.
+    ScreenAdjustments.applyToContent(this);
     if (mCanceled)
       return;
     if (!Config.isLocationRequested() && !LocationUtils.checkLocationPermission(this))

@@ -200,6 +200,29 @@
     <!-- Setting name which enables or disables zoom buttons on the map screen. -->
     <string name="pref_zoom_title">“+” and “-” buttons on the map</string>
     <string name="pref_zoom_summary">Display on the map</string>
+    <!-- Setting that grows the app's whole UI with the size of the screen it runs on -->
+    <string name="adapt_to_screen_title">Adapt to screen</string>
+    <!-- Description of the Adapt to screen setting -->
+    <string name="adapt_to_screen_summary">Grow the icons, the text and the spacing with the size of the screen</string>
+    <!-- What Adapt to screen is drawing at, appended to its description: "×1.5" -->
+    <string name="adapt_to_screen_scale">×%1$s</string>
+    <!-- Setting that moves the app's content away from the screen edges -->
+    <string name="screen_margins_title">Screen margins</string>
+    <!-- Message of the dialog opened from the Screen margins setting -->
+    <string name="screen_margins_message">Pick an edge, then dial in the value.</string>
+    <!-- Current value of the Screen margins setting: left / right / top / bottom, in dp -->
+    <string name="screen_margins_value">%1$d / %2$d / %3$d / %4$d dp</string>
+    <!-- One of the four screen edges the Screen margins setting moves the content away from -->
+    <string name="screen_margin_left">Left</string>
+    <string name="screen_margin_right">Right</string>
+    <string name="screen_margin_top">Top</string>
+    <string name="screen_margin_bottom">Bottom</string>
+    <!-- One edge of the Screen margins setting with its value, e.g. "Left: 12 dp" -->
+    <string name="screen_margin_edge_value">%1$s: %2$d dp</string>
+    <!-- Value of one edge of the Screen margins setting -->
+    <string name="screen_margin_value">%1$d dp</string>
+    <!-- Range one edge of the Screen margins setting can be dialled within -->
+    <string name="screen_margin_range">Any value from 0 to %1$d dp</string>
     <string name="pref_auto_night_in_navigation_title">Night style when navigating in the dark</string>
     <!-- Settings «Map» category: «Night style» title -->
     <string name="pref_map_style_title">Night Mode</string>
