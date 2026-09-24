@@ -627,10 +627,28 @@ public class SettingsPrefsFragment extends BaseXmlSettingsFragment implements La
 
     new MaterialAlertDialogBuilder(requireActivity(), R.style.MwmTheme_AlertDialog)
         .setTitle(R.string.screen_margins_title)
-        .setMessage(R.string.screen_margins_message)
+        // Deliberately not setMessage(): androidx only mounts the item list when the dialog has no
+        // message - AlertController.setupContent puts the list in the message's place - so a message
+        // here would leave the four edges nowhere to go and they would silently not appear.
+        .setView(instructionView())
         .setItems(items, (dialog, which) -> showMarginDialer(edges[which]))
         .setNegativeButton(android.R.string.cancel, null)
         .show();
+  }
+
+  /**
+   * The instruction line, shown under the edges. It goes in the dialog's custom view rather than in
+   * the message slot, because in androidx those two are mutually exclusive.
+   */
+  @NonNull
+  private View instructionView()
+  {
+    final TextView hint = new TextView(requireActivity());
+    hint.setText(R.string.screen_margins_message);
+    hint.setTextAppearance(R.style.MwmTextAppearance_Body1);
+    final int padding = getResources().getDimensionPixelSize(R.dimen.margin_base);
+    hint.setPadding(padding, 0, padding, padding);
+    return hint;
   }
 
   /**
